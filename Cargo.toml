@@ -1,12 +1,8 @@
-[package]
-name = "zkp-hackathon"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = ["contracts/*"]
+resolver = "2"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[dependencies]
+[workspace.dependencies]
 cosmwasm-schema = "2.0.2"
 cosmwasm-std = { version = "2.0.2", features = ["stargate", "staking"] }
 cw-storage-plus = { version = "2.0.0" }
