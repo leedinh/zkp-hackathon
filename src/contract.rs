@@ -1,4 +1,6 @@
-use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+};
 
 use crate::{
     contract::{
@@ -10,6 +12,7 @@ use crate::{
     state::{State, COUNT},
 };
 
+#[entry_point]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -25,6 +28,7 @@ pub fn instantiate(
         .add_attribute("count", msg.count.to_string()))
 }
 
+#[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     use QueryMsg::*;
 
@@ -54,6 +58,7 @@ mod query {
     }
 }
 
+#[entry_point]
 pub fn execute(
     deps: DepsMut,
     _env: Env,
