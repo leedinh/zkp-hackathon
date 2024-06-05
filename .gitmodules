@@ -1,0 +1,3 @@
+[submodule "cw-nibiru"]
+	path = cw-nibiru
+	url = https://github.com/NibiruChain/cw-nibiru.git
