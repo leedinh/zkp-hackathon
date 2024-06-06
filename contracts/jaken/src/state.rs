@@ -39,11 +39,23 @@ impl Display for GameMove {
     }
 }
 
+pub fn rand_move(rng: &[u8]) -> GameMove {
+    let num: u8 = rng[0] % 3 + 1;
+    match num {
+        1 => GameMove::Rock {},
+        2 => GameMove::Paper {},
+        3 => GameMove::Scissors {},
+        _ => panic!("Invalid random number"),
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum GameResult {
     HostWins {},
     OpponentWins {},
     Tie {},
+    ContractWins(),
+    PlayerWins(),
 }
 
 impl Display for GameResult {
@@ -52,9 +64,18 @@ impl Display for GameResult {
             GameResult::HostWins {} => write!(f, "Host Wins!"),
             GameResult::OpponentWins {} => write!(f, "Opponent Wins!"),
             GameResult::Tie {} => write!(f, "Game is Tie !"),
+            GameResult::ContractWins() => write!(f, "Contract Wins!"),
+            GameResult::PlayerWins() => write!(f, "Player Wins!"),
         }
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Random {
+    pub prng_seed: Vec<u8>,
+    pub entropy: Vec<u8>,
+}
+
 pub const STATE: Item<State> = Item::new("state");
 pub const GAME: Map<(Addr, Addr), Game> = Map::new("game");
+pub const RANDOM: Item<Random> = Item::new("random");

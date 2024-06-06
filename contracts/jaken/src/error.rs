@@ -23,6 +23,9 @@ pub enum ContractError {
 
     #[error("You cant respond to this game")]
     UnauthorizedOpponent {},
+
+    #[error("No funds available to withdraw")]
+    NoFunds {},
     // Add any other custom errors you like here.
     // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
 }

@@ -1,13 +1,17 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    coins, to_json_binary, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+    StdResult,
 };
+use cosmwasm_std::{Coin, CosmosMsg};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
+use crate::helpers::{validate_balance, validate_sent_funds};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ResultResponse};
-use crate::state::{Game, GameMove, GameResult, State, GAME, STATE};
+use crate::state::{rand_move, Game, GameMove, GameResult, Random, State, GAME, RANDOM, STATE};
+use crate::utils::{sha_256, Prng};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:rps";
@@ -18,12 +22,18 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let state = State {
         owner: info.sender.clone(),
     };
+
+    let rand_state = Random {
+        prng_seed: sha_256(base64::encode(msg.prng_seed.clone()).as_bytes()).to_vec(),
+        entropy: msg.prng_seed.as_bytes().to_vec(),
+    };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    RANDOM.save(deps.storage, &rand_state)?;
     STATE.save(deps.storage, &state)?;
 
     Ok(Response::new()
@@ -34,7 +44,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
@@ -47,6 +57,114 @@ pub fn execute(
         ExecuteMsg::Respond { host, second_move } => {
             try_respond_to_game(deps, info, host, second_move)
         }
+
+        ExecuteMsg::BetToken {
+            coin,
+            first_move,
+            entropy,
+        } => try_bet_token(deps, info, env, coin, first_move, entropy),
+
+        ExecuteMsg::Withdraw { coin } => try_withdraw(deps, info, env, coin),
+    }
+}
+
+pub fn try_withdraw(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    coin: Coin,
+) -> Result<Response, ContractError> {
+    let state = STATE.load(deps.storage)?;
+    if info.sender != state.owner {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let contract_addr = env.contract.address.clone();
+    let amount = coin.amount.u128();
+    let denom = coin.denom.clone();
+    validate_balance(&deps, &contract_addr, &denom, amount)?;
+
+    if amount == 0 {
+        return Err(ContractError::NoFunds {});
+    }
+
+    let res = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: coins(amount.into(), denom.clone()),
+        })
+        .add_attribute("action", "withdraw")
+        .add_attribute("amount", amount.to_string())
+        .add_attribute("denom", denom);
+
+    Ok(res)
+}
+
+pub fn try_bet_token(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    coin: Coin,
+    opp_move: GameMove,
+    entropy: String,
+) -> Result<Response, ContractError> {
+    // validate host address
+
+    let fund = validate_sent_funds(info.funds)?;
+    let contract_addr = env.contract.address.clone();
+
+    // Validate contract balance
+    validate_balance(&deps, &contract_addr, &fund.denom, fund.amount.u128())?;
+
+    let opponent = info.sender.clone();
+    let mut rand_state = RANDOM.load(deps.storage)?;
+    let rng = Prng::new_rand_bytes(&rand_state.entropy, (&entropy).as_ref());
+    rand_state.entropy = rng.clone();
+    RANDOM.save(deps.storage, &rand_state)?;
+
+    let contract_move: GameMove = rand_move(&rng);
+
+    let result = match opp_move {
+        GameMove::Rock {} => match contract_move {
+            GameMove::Rock {} => GameResult::Tie {},
+            GameMove::Paper {} => GameResult::ContractWins {},
+            GameMove::Scissors {} => GameResult::PlayerWins {},
+        },
+        GameMove::Paper {} => match contract_move {
+            GameMove::Rock {} => GameResult::PlayerWins {},
+            GameMove::Paper {} => GameResult::Tie {},
+            GameMove::Scissors {} => GameResult::ContractWins {},
+        },
+        GameMove::Scissors {} => match contract_move {
+            GameMove::Rock {} => GameResult::ContractWins {},
+            GameMove::Paper {} => GameResult::PlayerWins {},
+            GameMove::Scissors {} => GameResult::Tie {},
+        },
+    };
+    let denom = coin.denom.clone();
+    let amount = coin.amount.u128() as u64;
+
+    let message = match result {
+        GameResult::PlayerWins {} => Some(BankMsg::Send {
+            to_address: opponent.to_string(),
+            amount: coins((amount * 2).into(), denom),
+        }),
+        GameResult::ContractWins {} => Some(BankMsg::Send {
+            to_address: opponent.to_string(),
+            amount: coins(amount.into(), denom),
+        }),
+        _ => None,
+    };
+
+    if let Some(msg) = message {
+        Ok(Response::new()
+            .add_message(CosmosMsg::Bank(msg))
+            .add_attribute("action", "bet_token")
+            .add_attribute("result", result.to_string()))
+    } else {
+        Ok(Response::new()
+            .add_attribute("action", "bet_token")
+            .add_attribute("result", result.to_string()))
     }
 }
 
