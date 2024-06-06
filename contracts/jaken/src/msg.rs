@@ -23,7 +23,6 @@ pub enum ExecuteMsg {
     },
 
     BetToken {
-        coin: Coin,
         first_move: GameMove,
         entropy: String,
     },

@@ -59,10 +59,9 @@ pub fn execute(
         }
 
         ExecuteMsg::BetToken {
-            coin,
             first_move,
             entropy,
-        } => try_bet_token(deps, info, env, coin, first_move, entropy),
+        } => try_bet_token(deps, info, env, first_move, entropy),
 
         ExecuteMsg::Withdraw { coin } => try_withdraw(deps, info, env, coin),
     }
@@ -104,7 +103,6 @@ pub fn try_bet_token(
     deps: DepsMut,
     info: MessageInfo,
     env: Env,
-    coin: Coin,
     opp_move: GameMove,
     entropy: String,
 ) -> Result<Response, ContractError> {
@@ -141,8 +139,8 @@ pub fn try_bet_token(
             GameMove::Scissors {} => GameResult::Tie {},
         },
     };
-    let denom = coin.denom.clone();
-    let amount = coin.amount.u128() as u64;
+    let denom = fund.denom.clone();
+    let amount = fund.amount.u128() as u64;
 
     let message = match result {
         GameResult::PlayerWins {} => Some(BankMsg::Send {
