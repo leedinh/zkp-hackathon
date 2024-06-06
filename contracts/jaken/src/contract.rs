@@ -147,7 +147,7 @@ pub fn try_bet_token(
             to_address: opponent.to_string(),
             amount: coins((amount * 2).into(), denom),
         }),
-        GameResult::ContractWins {} => Some(BankMsg::Send {
+        GameResult::Tie {} => Some(BankMsg::Send {
             to_address: opponent.to_string(),
             amount: coins(amount.into(), denom),
         }),
