@@ -14,6 +14,7 @@ rust-version  = "1.73"
 [workspace.dependencies]
 cosmwasm-schema = "2.0.2"
 cosmwasm-std = { version = "^2.0", features = ["stargate", "staking"] }
+cosmwasm-storage = "1.5.2"
 cw-storage-plus = { version = "2.0.0" }
 cw2 = { version = "2.0.0" }
 serde_json = "1"
@@ -22,6 +23,7 @@ cw-ownable = { version = "2.0", git = "https://github.com/PFC-Validator/cw-plus-
 cw-utils        = "^2.0"
 cw721           = { version = "*", path = "./packages/cw721" }
 cw721-base      = { version = "*", path = "./contracts/cw721-base" }
+jaken = { version = "*", path = "./contracts/jaken" }
 cw721-base-016  = { version = "0.16.0", package = "cw721-base" }
 cw-multi-test   = "^2.0"
 cw20            = "^2.0"
